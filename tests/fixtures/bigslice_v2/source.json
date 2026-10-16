@@ -1,0 +1,119 @@
+{
+  "source": {
+    "url": "https://zenodo.org/records/17969757",
+    "archive": "curated_outputs.tar.gz",
+    "archive_md5": "eb006a3ef61b1eeffa46f22123c3cc43",
+    "member": "curated_outputs/BSlice-2.0.0/Amycolatopsis/result/data.db",
+    "size": 118001664,
+    "sha256": "d83c6468d3b0eaeb948d69ec017d810212c482eb7864836cda9d2bf26a438bc6",
+    "attribution": "Medema et al., Supplementary data files for BiG-SCAPE 2.0 and BiG-SLiCE 2.0 publication",
+    "license": "CC-BY-4.0"
+  },
+  "query_schema": {
+    "url": "https://raw.githubusercontent.com/medema-group/bigslice/e622dabf9bfe019a92a72b342598a82f119e8286/bigslice/modules/data/schema_query_mode.sql",
+    "sha256": "b10c8e419ee4c31ec38d0824b399a83872a0832f413060101a0e0af09ad09eee"
+  },
+  "query_sha256": "93cddefac2da0eac9752b213c038e47944c1f78e9447d56e43a400ab312a158c",
+  "bgcs": [
+    {
+      "id": 9,
+      "dataset_id": 1,
+      "name": "AOHO010000_2/AOHO010000_2.cluster022",
+      "type": "as4",
+      "on_contig_edge": null,
+      "length_nt": 44065,
+      "orig_folder": "AOHO010000_2",
+      "orig_filename": "AOHO010000_2.cluster022.gbk",
+      "membership_value": 0.0,
+      "has_features": true,
+      "memberships": [
+        {
+          "gcf_id": 2997,
+          "bgc_id": 9,
+          "membership_value": 0.0,
+          "rank": 0
+        }
+      ]
+    },
+    {
+      "id": 90,
+      "dataset_id": 1,
+      "name": "NC_014318/NC_014318.cluster007",
+      "type": "as4",
+      "on_contig_edge": null,
+      "length_nt": 85859,
+      "orig_folder": "NC_014318",
+      "orig_filename": "NC_014318.cluster007.gbk",
+      "membership_value": 0.1067081440921856,
+      "has_features": true,
+      "memberships": [
+        {
+          "gcf_id": 2969,
+          "bgc_id": 90,
+          "membership_value": 0.1067081440921856,
+          "rank": 0
+        }
+      ]
+    },
+    {
+      "id": 145,
+      "dataset_id": 1,
+      "name": "01.1_A_o_B-37b_1_1/01.1_A_o_B-37b_1_1.cluster035",
+      "type": "as4",
+      "on_contig_edge": null,
+      "length_nt": 42720,
+      "orig_folder": "01.1_A_o_B-37b_1_1",
+      "orig_filename": "01.1_A_o_B-37b_1_1.cluster035.gbk",
+      "membership_value": 0.4000399652742934,
+      "has_features": true,
+      "memberships": [
+        {
+          "gcf_id": 2887,
+          "bgc_id": 145,
+          "membership_value": 0.4000399652742934,
+          "rank": 0
+        }
+      ]
+    },
+    {
+      "id": 544,
+      "dataset_id": 1,
+      "name": "A_decap_NRPS_BGC-54part/A_decap_NRPS_BGC-54part",
+      "type": "as4",
+      "on_contig_edge": null,
+      "length_nt": 31186,
+      "orig_folder": "A_decap_NRPS_BGC-54part",
+      "orig_filename": "A_decap_NRPS_BGC-54part.gbk",
+      "membership_value": 0.9166706530238622,
+      "has_features": false,
+      "memberships": [
+        {
+          "gcf_id": 2706,
+          "bgc_id": 544,
+          "membership_value": 0.9166706530238622,
+          "rank": 0
+        }
+      ]
+    }
+  ],
+  "model": {
+    "model_id": "d83c6468d3b0eaeb948d69ec017d810212c482eb7864836cda9d2bf26a438bc6",
+    "cutoff": 0.4,
+    "clustering": {
+      "id": 4,
+      "run_id": 5,
+      "clustering_method": "birch",
+      "num_centroids": 590,
+      "threshold": 0.4,
+      "random_seed": 3513156
+    },
+    "families": {
+      "2997": [],
+      "2969": [],
+      "2887": [],
+      "2706": []
+    },
+    "fixture_only": true,
+    "reference_scope": "Published Amycolatopsis benchmark; not our MIBiG model"
+  }
+}
