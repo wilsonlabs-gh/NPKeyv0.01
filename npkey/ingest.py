@@ -9,7 +9,7 @@ import warnings
 from zipfile import BadZipFile, ZipFile
 
 from Bio import BiopythonParserWarning, SeqIO
-from io_utils import checksum, get
+from .io_utils import checksum, get
 
 
 def ingest_genome(source, output_dir):

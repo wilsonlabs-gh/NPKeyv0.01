@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import tarfile
-from io_utils import checksum, execute, rows, write_json
+from .io_utils import checksum, execute, rows, write_json
 
 
 def prepare_reference(mibig_archive, output_dir, hmm_dir, *, threshold=0.4, executable="bigslice"):

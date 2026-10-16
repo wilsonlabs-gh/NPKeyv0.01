@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 from Bio import SeqIO
-from io_utils import checksum
+from .io_utils import checksum
 
 
 def parse_results(results_dir, genome):

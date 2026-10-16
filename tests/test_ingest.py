@@ -14,7 +14,7 @@ from Bio.Seq import Seq
 from Bio.SeqFeature import SeqFeature, SimpleLocation
 from Bio.SeqRecord import SeqRecord
 
-from ingest import ingest_genome
+from npkey.ingest import ingest_genome
 
 
 ACCESSION = "GCF_000203835.1"
@@ -127,7 +127,7 @@ class IngestTests(unittest.TestCase):
             self.local(genbank(protein))
 
     def test_missing_file_and_unversioned_accession_do_not_call_network(self):
-        with patch("io_utils.requests.get") as network:
+        with patch("npkey.io_utils.requests.get") as network:
             with self.assertRaises(FileNotFoundError):
                 ingest_genome(self.source, self.output)
             with self.assertRaisesRegex(ValueError, "versioned assembly"):
@@ -136,7 +136,7 @@ class IngestTests(unittest.TestCase):
 
     def test_download_preserves_exact_assembly_and_does_not_extract_other_files(self):
         contents = genbank(record(), record("plasmid"))
-        with patch("io_utils.requests.get", return_value=Mock(content=package(contents))) as network:
+        with patch("npkey.io_utils.requests.get", return_value=Mock(content=package(contents))) as network:
             result = ingest_genome(ACCESSION, self.output)
         self.assertEqual(result["accession"], ACCESSION)
         self.assertEqual(Path(result["genbank_path"]).read_bytes(), contents)
@@ -147,19 +147,19 @@ class IngestTests(unittest.TestCase):
     def test_does_not_substitute_another_assembly_or_missing_annotation(self):
         for member in (MEMBER.replace(".1/", ".2/"), MEMBER.replace("gbff", "fna")):
             with self.subTest(member=member):
-                with patch("io_utils.requests.get", return_value=Mock(content=package(genbank(record()), member))):
+                with patch("npkey.io_utils.requests.get", return_value=Mock(content=package(genbank(record()), member))):
                     with self.assertRaisesRegex(ValueError, "no unique annotated"):
                         ingest_genome(ACCESSION, self.output)
                 self.assertEqual(list((self.output / "input").iterdir()), [])
 
     def test_invalid_zip_is_explicit(self):
-        with patch("io_utils.requests.get", return_value=Mock(content=b"not a zip")):
+        with patch("npkey.io_utils.requests.get", return_value=Mock(content=b"not a zip")):
             with self.assertRaisesRegex(ValueError, "invalid or damaged ZIP"):
                 ingest_genome(ACCESSION, self.output)
 
     def test_retries_transient_reads(self):
         responses = [requests.ConnectionError("temporary failure"), Mock(content=package(genbank(record())))]
-        with patch("io_utils.requests.get", side_effect=responses) as network, patch("io_utils.time.sleep") as sleep:
+        with patch("npkey.io_utils.requests.get", side_effect=responses) as network, patch("npkey.io_utils.time.sleep") as sleep:
             ingest_genome(ACCESSION, self.output)
         self.assertEqual(network.call_count, 2)
         sleep.assert_called_once_with(1)
@@ -168,13 +168,13 @@ class IngestTests(unittest.TestCase):
         response = requests.Response()
         response.status_code = 404
         error = requests.HTTPError(response=response)
-        with patch("io_utils.requests.get", side_effect=error) as network:
+        with patch("npkey.io_utils.requests.get", side_effect=error) as network:
             with self.assertRaises(requests.RequestException):
                 ingest_genome(ACCESSION, self.output)
         self.assertEqual(network.call_count, 1)
 
     def test_exhausted_retries_leave_no_artifact(self):
-        with patch("io_utils.requests.get", side_effect=requests.ConnectionError("offline")) as network, patch("io_utils.time.sleep"):
+        with patch("npkey.io_utils.requests.get", side_effect=requests.ConnectionError("offline")) as network, patch("npkey.io_utils.time.sleep"):
             with self.assertRaises(requests.RequestException):
                 ingest_genome(ACCESSION, self.output)
         self.assertEqual(network.call_count, 3)

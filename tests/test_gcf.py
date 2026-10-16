@@ -12,12 +12,12 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from antismash import run_antismash
-from gcf_assignment import assign_gcfs
-from gcf_reference import prepare_reference
-from io_utils import checksum
+from npkey.antismash import run_antismash
+from npkey.gcf_assignment import assign_gcfs
+from npkey.gcf_reference import prepare_reference
+from npkey.io_utils import checksum
 from main import run
-from save_results import save_results
+from npkey.save_results import save_results
 from test_antismash import result_data, region_files
 from test_ingest import genbank, record
 from test_compounds import write_metadata
@@ -89,7 +89,7 @@ class GcfTests(unittest.TestCase):
         Path(log).write_text("Synthetic reference build")
 
     def build(self):
-        with patch("gcf_reference.execute", side_effect=self.build_command):
+        with patch("npkey.gcf_reference.execute", side_effect=self.build_command):
             return prepare_reference(self.archive, self.reference, self.hmm)
 
     def evidence(self):
@@ -101,7 +101,7 @@ class GcfTests(unittest.TestCase):
         (saved / "genome.json").write_text(json.dumps(data))
         for name, contents in region_files(data).items():
             (saved / name).write_text(contents)
-        from ingest import ingest_genome
+        from npkey.ingest import ingest_genome
         genome = ingest_genome(source, self.output)
         return run_antismash(genome, self.output, saved_results=saved)
 
@@ -137,7 +137,7 @@ class GcfTests(unittest.TestCase):
         Path(log).write_text("Synthetic query")
 
     def assign(self, evidence, **options):
-        with patch("gcf_assignment.execute", side_effect=self.query_command):
+        with patch("npkey.gcf_assignment.execute", side_effect=self.query_command):
             return assign_gcfs(evidence, self.reference, self.output, **options)
 
     def test_reference_records_families_version_hmm_and_exact_source(self):
@@ -153,10 +153,10 @@ class GcfTests(unittest.TestCase):
 
     def test_reference_reuse_and_changed_inputs(self):
         self.build()
-        with patch("gcf_reference.execute", side_effect=self.build_command) as engine:
+        with patch("npkey.gcf_reference.execute", side_effect=self.build_command) as engine:
             self.assertEqual(prepare_reference(self.archive, self.reference, self.hmm), self.reference)
         self.assertEqual(engine.call_count, 1)  # Version check only.
-        with patch("gcf_reference.execute", side_effect=self.build_command):
+        with patch("npkey.gcf_reference.execute", side_effect=self.build_command):
             with self.assertRaisesRegex(ValueError, "inputs changed"):
                 prepare_reference(self.archive, self.reference, self.hmm, threshold=0.5)
 
@@ -166,7 +166,7 @@ class GcfTests(unittest.TestCase):
             self.build()
         self.assertFalse((self.reference / "reference.json").exists())
         self.status = 7
-        with patch("gcf_reference.execute", side_effect=self.build_command) as engine:
+        with patch("npkey.gcf_reference.execute", side_effect=self.build_command) as engine:
             prepare_reference(self.archive, self.reference, self.hmm)
         self.assertIn("--resume", engine.call_args.args[0])
         self.assertTrue((self.reference / "reference.json").exists())
@@ -218,7 +218,7 @@ class GcfTests(unittest.TestCase):
         self.assertEqual([hit["within_cutoff"] for hit in result["gcf_matches"]], [True, False])
         self.assertEqual(result["provenance"]["gcf"]["ranks"], 2)
         first = deepcopy(result)
-        with patch("gcf_assignment.execute") as engine:
+        with patch("npkey.gcf_assignment.execute") as engine:
             self.assertEqual(assign_gcfs(result, self.reference, self.output), first)
         engine.assert_not_called()
 
@@ -248,7 +248,7 @@ class GcfTests(unittest.TestCase):
         self.build()
         evidence = self.evidence()
         evidence["regions"] = []
-        with patch("gcf_assignment.execute") as engine:
+        with patch("npkey.gcf_assignment.execute") as engine:
             result = assign_gcfs(evidence, self.reference, self.output)
         engine.assert_not_called()
         self.assertEqual(result["gcf_matches"], [])
@@ -277,7 +277,7 @@ class GcfTests(unittest.TestCase):
                 Path(log).write_text(VERSION)
             else:
                 raise subprocess.CalledProcessError(1, command)
-        with patch("gcf_assignment.execute", side_effect=fail):
+        with patch("npkey.gcf_assignment.execute", side_effect=fail):
             with self.assertRaises(subprocess.CalledProcessError):
                 assign_gcfs(evidence, self.reference, self.output)
         self.assertEqual(evidence, original)
@@ -304,7 +304,7 @@ class GcfTests(unittest.TestCase):
         metadata = self.root / "metadata.tar.gz"
         write_metadata(metadata, {"BGC0000001": {"accession": "BGC0000001", "version": 1,
                        "compounds": [{"name": "unresolved reference compound", "databaseIds": []}]}})
-        with patch("gcf_assignment.execute", side_effect=self.query_command):
+        with patch("npkey.gcf_assignment.execute", side_effect=self.query_command):
             first = run(self.root / "genome.gbk", self.output, self.reference,
                         saved_results=self.root / "antismash", mibig_metadata=metadata)
             second = run(self.root / "genome.gbk", self.output, self.reference,
@@ -328,6 +328,6 @@ class GcfTests(unittest.TestCase):
 
     def test_production_files_stay_under_one_hundred_physical_lines(self):
         root = Path(__file__).resolve().parents[1]
-        for path in root.glob("*.py"):
+        for path in [root / "main.py", *(root / "npkey").glob("*.py")]:
             with self.subTest(file=path.name):
                 self.assertLess(len(path.read_text(encoding="utf-8").splitlines()), 100)

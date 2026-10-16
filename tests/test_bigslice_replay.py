@@ -11,9 +11,9 @@ import sqlite3
 from tempfile import TemporaryDirectory
 import unittest
 
-from gcf_assignment import _read_matches
-from io_utils import checksum
-from save_results import save_results
+from npkey.gcf_assignment import _read_matches
+from npkey.io_utils import checksum
+from npkey.save_results import save_results
 
 FIXTURE = Path(__file__).parent / "fixtures/bigslice_v2"
 

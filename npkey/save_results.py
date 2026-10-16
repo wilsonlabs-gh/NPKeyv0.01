@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
-from io_utils import write_json
+from .io_utils import write_json
 
 
 def save_results(evidence, output_dir):

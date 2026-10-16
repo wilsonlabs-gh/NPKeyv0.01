@@ -9,8 +9,8 @@ from urllib.parse import quote, urljoin
 from zipfile import ZipFile
 import requests
 
-from antismash_results import parse_results
-from io_utils import checksum, get, write_json
+from .antismash_results import parse_results
+from .io_utils import checksum, get, write_json
 
 BASE_URL = "https://antismash.secondarymetabolites.org"
 SETTINGS = {"jobtype": "antismash8", "taxon": "bacteria", "genefinder": "none",

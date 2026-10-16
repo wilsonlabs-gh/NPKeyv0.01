@@ -1,10 +1,10 @@
 """Controller: ingest, mine, assign families, add compounds, persist."""
 
-from ingest import ingest_genome
-from antismash import run_antismash
-from gcf_assignment import assign_gcfs
-from compound_context import add_compounds
-from save_results import save_results
+from npkey.ingest import ingest_genome
+from npkey.antismash import run_antismash
+from npkey.gcf_assignment import assign_gcfs
+from npkey.compound_context import add_compounds
+from npkey.save_results import save_results
 
 
 def run(source, output_dir, reference_dir, saved_results=None, *, mibig_metadata,

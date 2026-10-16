@@ -1,20 +1,22 @@
-# Genome to GCF
+# NPKey
 
-Annotated genome -> antiSMASH regions -> BiG-SLiCE reference-family assignment -> SQLite/CSV.
+Annotated genome -> antiSMASH BGCs -> BiG-SLiCE GCF assignment -> reference compounds -> SQLite/JSON/CSV.
 
 | File | Responsibility |
 |---|---|
-| `main.py` | Call the four stages. |
-| `ingest.py` | Preserve and validate local GenBank or a versioned NCBI assembly. |
-| `antismash.py` | Submit once, resume polling, download or import antiSMASH results. |
-| `antismash_results.py` | Verify input sequences and region files; normalize coordinates. |
-| `gcf_reference.py` | Build/cache MIBiG-derived reference families once. |
-| `gcf_assignment.py` | Query the frozen reference and apply the assignment cutoff. |
-| `save_results.py` | Save evidence JSON, SQLite tables and a CSV summary. |
-| `io_utils.py` | Shared checksums, atomic JSON, read retries, SQL reads and command logging. |
+| `main.py` | Call the five stages. |
+| `npkey/ingest.py` | Stage 1: preserve and validate local GenBank or a versioned NCBI assembly. |
+| `npkey/antismash.py` | Stage 2: submit once, resume polling, download or import antiSMASH results. |
+| `npkey/gcf_assignment.py` | Stage 3: query the frozen reference and apply the assignment cutoff. |
+| `npkey/compound_context.py` | Stage 4: link reference BGCs to documented compounds and resolve InChIKeys. |
+| `npkey/save_results.py` | Stage 5: save evidence JSON, the SQLite ledger and a CSV summary. |
+| `npkey/gcf_reference.py` | Build/cache MIBiG-derived reference families once. |
+| `npkey/antismash_results.py` | Verify input sequences and region files; normalize coordinates. |
+| `npkey/io_utils.py` | Shared checksums, atomic JSON, read retries, SQL reads and command logging. |
 
-See [QCinput.md](QCinput.md) for genome requirements. Each production Python file
-has fewer than 100 physical lines, including comments and blank lines.
+See [QCinput.md](QCinput.md) for genome requirements. `tests/` holds the offline
+tests and their fixtures. Keep local inputs/reference databases in `data/` and
+outputs in `runs/`; both directories and the virtual environments are ignored by Git.
 
 ## Install
 
@@ -33,11 +35,12 @@ python3.11 -m venv .bigslice
 ## Prepare the reference once
 
 Download the [official antiSMASH-processed MIBiG 4.0 GenBank archive](https://dl.secondarymetabolites.org/mibig/mibig_antismash_4.0_gbk_as8b1.tar.bz2)
-to `data/`. The raw GenBank and JSON metadata archives are not substitutes.
+to `data/`. Also download the matching [MIBiG 4.0 JSON metadata archive](https://dl.secondarymetabolites.org/mibig/mibig_json_4.0.tar.gz)
+for stage 4. Family preparation requires the processed GenBank archive.
 Run these examples with the pipeline Python environment:
 
 ```python
-from gcf_reference import prepare_reference
+from npkey.gcf_reference import prepare_reference
 
 reference = prepare_reference(
     "data/mibig_antismash_4.0_gbk_as8b1.tar.bz2", "data/reference",
@@ -53,11 +56,16 @@ Family IDs belong to this model; a new build gets a new model identifier.
 
 ## Run a genome
 
+Save this as a Python script in the project root and run it with
+`.venv/bin/python your_script.py`:
+
 ```python
 from main import run
 
 result = run("data/genome.gbk", "runs/sample", "data/reference",
+             mibig_metadata="data/mibig_json_4.0.tar.gz",
              executable=".bigslice/bin/bigslice")
+print(result)
 # For an existing antiSMASH 8 result, also pass saved_results="data/antismash_output".
 ```
 
@@ -73,11 +81,22 @@ accepted only within `cutoff` (default: reference clustering threshold). This is
 configurable distance rule, not a probability or experimentally validated identity.
 Unassigned regions retain their nearest candidates. Zero detected features is
 reported as `no_features`; zero BGCs is valid. No assignment against MIBiG does not
-establish novelty. No compounds or chemical structures are inferred.
+establish novelty.
 
 Queries reuse completed local results; interrupted local queries can be rerun.
 Each query copies the database and centroid cache, leaving the reference frozen.
 `provenance.gcf` identifies the model and its MIBiG family members.
+
+Stage 4 reads the matching MIBiG metadata release for accepted family members.
+Explicit PubChem CIDs resolve to full InChIKeys; identical keys share a compound
+node. Missing, failed or conflicting identifiers retain unresolved nodes with null
+InChIKeys. Cached PubChem responses record retrieval time, URL and checksum;
+the ledger also records the metadata archive checksum and lookup errors.
+
+SQLite and evidence JSON retain reference BGC accessions, compound nodes, documented
+BGC-compound links and region-to-reference links labelled `same_gcf`. These are
+reference associations; they do not establish which compounds a query BGC produces.
+CSV summarizes GCF assignments.
 `result` contains the run ID and JSON/CSV/SQLite paths. Repeated identical saves
 reuse rows rather than duplicating them. Raw antiSMASH files and BiG-SLiCE query
 databases/logs remain available under the run directory.
@@ -89,7 +108,7 @@ databases/logs remain available under the run directory.
 ```
 
 Tests cover offline handoff, reference caching, assignment boundaries, failed jobs,
-replay, persistence and the production line limit. BiG-SLiCE commands are mocked;
+replay, compound identity, provenance and persistence. BiG-SLiCE commands are mocked;
 a [published-data fixture](tests/fixtures/bigslice_v2/README.md) also checks real
 version-2 scores in the upstream query schema. A live HMM/clustering run remains untested.
 Sources: [antiSMASH API](https://api.secondarymetabolites.org/),

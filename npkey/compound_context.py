@@ -7,7 +7,7 @@ import re
 import tarfile
 import time
 import requests
-from io_utils import checksum, get, write_json
+from .io_utils import checksum, get, write_json
 
 
 def add_compounds(evidence, metadata_archive, output_dir):

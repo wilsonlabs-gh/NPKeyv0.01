@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 import shutil
 from tempfile import TemporaryDirectory
-from io_utils import checksum, execute, rows, write_json
+from .io_utils import checksum, execute, rows, write_json
 
 
 def assign_gcfs(evidence, reference_dir, output_dir, *, cutoff=None, ranks=3, executable="bigslice"):

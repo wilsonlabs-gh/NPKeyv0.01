@@ -12,9 +12,9 @@ import unittest
 from unittest.mock import Mock, patch
 import requests
 
-from compound_context import add_compounds
-from io_utils import checksum
-from save_results import save_results
+from npkey.compound_context import add_compounds
+from npkey.io_utils import checksum
+from npkey.save_results import save_results
 
 KEY = "BSYNRYMUTXBXSQ-UHFFFAOYSA-N"
 OTHER_KEY = "RYYVLZVUVIJVGH-UHFFFAOYSA-N"
@@ -50,7 +50,7 @@ class CompoundTests(unittest.TestCase):
              "gcf_id": None, "gcf_status": "unassigned"}], "gcf_matches": [], "issues": [],
             "provenance": {"gcf": {"mibig_release": "4.0", "model_id": "fixture-model", "cutoff": 0.4,
                 "families": {"10": ["BGC0000001", "BGC0000002"], "20": ["BGC9999999"]}}}}
-        self.sleep = patch("compound_context.time.sleep")
+        self.sleep = patch("npkey.compound_context.time.sleep")
         self.sleep.start()
         self.addCleanup(self.sleep.stop)
         write_metadata(self.archive, self.records)
@@ -64,7 +64,7 @@ class CompoundTests(unittest.TestCase):
         return add_compounds(deepcopy(self.evidence), self.archive, self.root)
 
     def test_explicit_cid_deduplication_preserves_source_labels_and_unresolved_nodes(self):
-        with patch("compound_context.get", return_value=self.response()) as get:
+        with patch("npkey.compound_context.get", return_value=self.response()) as get:
             result = self.enrich()
         get.assert_called_once_with("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/InChIKey/JSON")
         self.assertEqual(len(result["compounds"]), 3)
@@ -81,9 +81,9 @@ class CompoundTests(unittest.TestCase):
         self.assertIn("retrieved_at", lookup)
 
     def test_cached_replay_and_ledger_links_are_repeatable(self):
-        with patch("compound_context.get", return_value=self.response()):
+        with patch("npkey.compound_context.get", return_value=self.response()):
             first = self.enrich()
-        with patch("compound_context.get", side_effect=AssertionError("Must use cache")):
+        with patch("npkey.compound_context.get", side_effect=AssertionError("Must use cache")):
             self.assertEqual(self.enrich(), first)
         saved = save_results(first, self.root)
         self.assertEqual(saved, save_results(self.enrich(), self.root))
@@ -101,23 +101,23 @@ class CompoundTests(unittest.TestCase):
     def test_multiple_identifiers_require_consistent_keys(self):
         self.records["BGC0000001"]["compounds"][0]["databaseIds"] = ["pubchem:2244", "pubchem:2519"]
         write_metadata(self.archive, self.records)
-        with patch("compound_context.get", side_effect=[self.response(), self.response(2519, OTHER_KEY)]):
+        with patch("npkey.compound_context.get", side_effect=[self.response(), self.response(2519, OTHER_KEY)]):
             result = self.enrich()
         self.assertIsNone(result["compounds"][result["bgc_compounds"][0][1]])
         (self.root / "pubchem/2519.json").unlink()
-        with patch("compound_context.get", return_value=self.response(2519, KEY)):
+        with patch("npkey.compound_context.get", return_value=self.response(2519, KEY)):
             consistent = self.enrich()
         self.assertEqual(consistent["bgc_compounds"][0][1], KEY)
 
     def test_service_failure_is_recorded_without_discarding_bgcs_and_can_be_retried(self):
-        with patch("compound_context.get", side_effect=requests.Timeout("service unavailable")):
+        with patch("npkey.compound_context.get", side_effect=requests.Timeout("service unavailable")):
             result = self.enrich()
         self.assertEqual(len(result["reference_bgcs"]), 2)
         self.assertTrue(all(key is None for key in result["compounds"].values()))
         self.assertIn("service unavailable", result["provenance"]["compounds"]["pubchem"]["2244"]["error"])
         self.assertFalse((self.root / "pubchem/2244.json").exists())
         save_results(result, self.root)
-        with patch("compound_context.get", return_value=self.response()):
+        with patch("npkey.compound_context.get", return_value=self.response()):
             recovered = self.enrich()
         saved = save_results(recovered, self.root)
         with closing(sqlite3.connect(saved["database"])) as db:
@@ -125,14 +125,14 @@ class CompoundTests(unittest.TestCase):
 
     def test_bad_cid_or_key_is_not_persisted_as_a_resolved_compound(self):
         for response in [self.response(cid=999), self.response(key="invalid")]:
-            with self.subTest(response=response), patch("compound_context.get", return_value=response):
+            with self.subTest(response=response), patch("npkey.compound_context.get", return_value=response):
                 result = self.enrich()
             self.assertTrue(all(key is None for key in result["compounds"].values()))
             self.assertIn("error", result["provenance"]["compounds"]["pubchem"]["2244"])
 
     def test_no_assignment_makes_no_compound_claims_or_requests(self):
         self.evidence["regions"][0].update(gcf_id=None, gcf_status="no_features")
-        with patch("compound_context.get") as get:
+        with patch("npkey.compound_context.get") as get:
             result = self.enrich()
         get.assert_not_called()
         self.assertEqual(result["reference_bgcs"], {})
@@ -151,4 +151,4 @@ class CompoundTests(unittest.TestCase):
     def test_stage_and_ledger_stay_within_seventy_five_lines(self):
         root = Path(__file__).resolve().parents[1]
         for name in ("compound_context.py", "save_results.py"):
-            self.assertLessEqual(len((root / name).read_text().splitlines()), 75)
+            self.assertLessEqual(len((root / "npkey" / name).read_text().splitlines()), 75)

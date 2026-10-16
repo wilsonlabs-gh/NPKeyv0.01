@@ -13,10 +13,10 @@ from Bio.SeqFeature import SeqFeature, SimpleLocation
 from Bio.SeqRecord import SeqRecord
 import requests
 
-from antismash import SETTINGS, run_antismash
-from antismash_results import parse_results
-from ingest import ingest_genome
-from io_utils import get
+from npkey.antismash import SETTINGS, run_antismash
+from npkey.antismash_results import parse_results
+from npkey.ingest import ingest_genome
+from npkey.io_utils import get
 
 
 def result_data():
@@ -174,35 +174,35 @@ class StageTwoTests(unittest.TestCase):
 
     def test_import_bypasses_network_and_preserves_stage_two_evidence(self):
         self.write()
-        with patch("antismash.requests.post") as post, patch("antismash.get") as get_mock:
+        with patch("npkey.antismash.requests.post") as post, patch("npkey.antismash.get") as get_mock:
             evidence = run_antismash(self.genome, self.output, saved_results=self.saved)
         post.assert_not_called()
         get_mock.assert_not_called()
         self.assertEqual(json.loads((self.job_dir / "evidence.json").read_text()), evidence)
 
     def test_submit_download_and_replay(self):
-        with patch("antismash.requests.post", return_value=response(data={"id": "job-1"})) as post:
-            with patch("antismash.get", side_effect=self.reads()):
+        with patch("npkey.antismash.requests.post", return_value=response(data={"id": "job-1"})) as post:
+            with patch("npkey.antismash.get", side_effect=self.reads()):
                 evidence = run_antismash(self.genome, self.output)
         self.assertEqual(post.call_count, 1)
         self.assertEqual(post.call_args.kwargs["data"]["knownclusterblast"], "false")
-        with patch("antismash.requests.post") as post, patch("antismash.get") as get_mock:
+        with patch("npkey.antismash.requests.post") as post, patch("npkey.antismash.get") as get_mock:
             self.assertEqual(run_antismash(self.genome, self.output), evidence)
         post.assert_not_called()
         get_mock.assert_not_called()
 
     def test_timeout_and_partial_download_resume_same_job(self):
         self.checkpoint()
-        with patch("antismash.get", return_value=response(data={"state": "running"})):
+        with patch("npkey.antismash.get", return_value=response(data={"state": "running"})):
             with self.assertRaises(TimeoutError):
                 run_antismash(self.genome, self.output, timeout=0)
         (self.job_dir / "results").mkdir()
-        with patch("antismash.requests.post") as post, patch("antismash.get", side_effect=self.reads()):
+        with patch("npkey.antismash.requests.post") as post, patch("npkey.antismash.get", side_effect=self.reads()):
             self.assertEqual(len(run_antismash(self.genome, self.output)["regions"]), 1)
         post.assert_not_called()
 
     def test_uncertain_submission_is_not_repeated(self):
-        with patch("antismash.requests.post", side_effect=requests.Timeout()) as post:
+        with patch("npkey.antismash.requests.post", side_effect=requests.Timeout()) as post:
             with self.assertRaisesRegex(RuntimeError, "not confirmed"):
                 run_antismash(self.genome, self.output)
             with self.assertRaisesRegex(RuntimeError, "uncertain"):
@@ -211,31 +211,31 @@ class StageTwoTests(unittest.TestCase):
 
     def test_failed_job_and_changed_settings_do_not_resubmit(self):
         self.checkpoint()
-        with patch("antismash.requests.post") as post:
-            with patch("antismash.get", return_value=response(data={"state": "failed"})):
+        with patch("npkey.antismash.requests.post") as post:
+            with patch("npkey.antismash.get", return_value=response(data={"state": "failed"})):
                 with self.assertRaisesRegex(RuntimeError, "failed"):
                     run_antismash(self.genome, self.output)
-            with patch("antismash.SETTINGS", dict(SETTINGS, genefinder="different")):
+            with patch("npkey.antismash.SETTINGS", dict(SETTINGS, genefinder="different")):
                 with self.assertRaisesRegex(ValueError, "Settings changed"):
                     run_antismash(self.genome, self.output)
         post.assert_not_called()
 
     def test_zip_traversal_is_rejected(self):
         self.checkpoint()
-        with patch("antismash.get", side_effect=self.reads(unsafe=True)):
+        with patch("npkey.antismash.get", side_effect=self.reads(unsafe=True)):
             with self.assertRaisesRegex(ValueError, "outside its directory"):
                 run_antismash(self.genome, self.output)
         self.assertFalse((self.job_dir / "escape.txt").exists())
 
     def test_read_retries_only_transient_failures(self):
         good = response()
-        with patch("io_utils.requests.get", side_effect=[requests.Timeout(), good]) as network:
-            with patch("io_utils.time.sleep"):
+        with patch("npkey.io_utils.requests.get", side_effect=[requests.Timeout(), good]) as network:
+            with patch("npkey.io_utils.time.sleep"):
                 self.assertIs(get("https://example.invalid"), good)
         self.assertEqual(network.call_count, 2)
         failed = requests.Response()
         failed.status_code = 404
-        with patch("io_utils.requests.get", return_value=failed) as network:
+        with patch("npkey.io_utils.requests.get", return_value=failed) as network:
             with self.assertRaises(requests.HTTPError):
                 get("https://example.invalid")
         self.assertEqual(network.call_count, 1)
